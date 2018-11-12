@@ -109,7 +109,7 @@ getDefaultLog () {
 if pingCheck $EXT_ADDRESS
 then 
 	pingCheck to external address $EXT_ADDRESS succeeded...exiting
-	return 0
+	exit 0
 fi
 echo Ping to $EXT_ADDRESS  fail, proceeding with checks  
 
@@ -120,7 +120,7 @@ echo Checking the interface $INTERFACE is up ...
 if ! $IFCONFIG $INTERFACE &> $LOG 
 then
 	echo The default interface $INTERFACE is not up, this is a possible problem to investigate
-	return 1
+	exit 1
 else
 	echo Default interface is up
 fi
@@ -145,7 +145,7 @@ else
 	else
 		echo No dhclient found
 	fi
-	return 1
+	exit 1
 fi
 
 # Assuming host configs are ok, now lets check we can reach the gateway
@@ -155,7 +155,7 @@ then
 	echo Cannot ping Gateway IP $GATEWAYIP
 	echo Possible cause is the interface IP is not on the correct subnet
 	echo $INTERFACE has address $INTERFACEIP and mask $SUBNETMASK
-	return 1
+	exit 1
 else
 	echo We can ping the gateway, so how far does traffic reach
 	if commandExists traceroute
