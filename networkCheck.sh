@@ -17,6 +17,7 @@ TRACEROUTE=$( which traceroute )
 ROUTE=$( which route )
 IFCONFIG=$( which ifconfig )
 ETHTOOL=$(which ethtool )
+LOG=$PWD/networkCheck.log
 desiredCommands='ifconfig netstat ping traceroute ip route' 
 for c in $desiredCommands
 do
@@ -40,7 +41,7 @@ commandExists () {
 
 pingCheck () {
 	commandExists ping || return 1
-	$PING -q -c 5 -W 2 $1 1> /dev/null || return 1
+	$PING -q -c 5 -W 2 $1 1> $LOG || return 1
 	return 0	
 }
 onSuccess () {
@@ -76,22 +77,40 @@ getDefaultGateway () {
 getDefaultConfigs () {
 	getDefaultInterface
 	getDefaultGateway
+	getDefaultLog
 	echo Gateway IP $GATEWAYIP
 	echo Interface $INTERFACE
+	echo Interface Subnet Mask is $SUBNETMASK
+	echo System log is $SYSTEMLOG
 	return 0
 }
 getInterfaceIP () {
 	commandExists ifconfig || return 1
-	INTERFACEIP=$( ifconfig $INTERFACE | grep 'inet addr' | awk {'print $2'} | cut -d: -f2 )
+	INTERFACEIP=$( ifconfig $1 | grep 'inet addr' | awk {'print $2'} | cut -d: -f2 )
 	isIPv4 $INTERFACEIP || return 1
+	getInterfaceSubnetMask $1
 	return 0
 }
-#pingCheck $EXT_ADDRESS && onSuccess pingCheck || echo 'Ping fail, proceeding with checks'  
+getInterfaceSubnetMask () {
+	commandExists ifconfig || return 1
+	SUBNETMASK=$( ifconfig $1 | grep 'inet addr' | awk {'print $4'} | cut -d: -f2 )
+	isIPv4 $SUBNETMASK || return 1
+	return 0
 
+}
+getDefaultLog () {
+	for file in /var/log/syslog /var/log/messages
+	do
+		SYSTEMLOG=$file
+		test -f $SYSTEMLOG && return 0
+	done
+	return 1
+}
+#pingCheck $EXT_ADDRESS && onSuccess pingCheck || echo Ping to $EXT_ADDRESS  fail, proceeding with checks  
 getDefaultConfigs
 # is the interface up
 echo Checking the interface $INTERFACE is up ... 
-if ! $IFCONFIG $INTERFACE &> /dev/null 
+if ! $IFCONFIG $INTERFACE &> $LOG 
 then
 	echo The default interface $INTERFACE is not up, this is a possible problem to investigate
 else
@@ -103,11 +122,23 @@ then
 	echo Interface $INTERFACE has IP $INTERFACEIP
 else
 	echo Interface $INTERFACE has no IP
+	echo Check whether it should get one via DHCP or static
+	echo Ubuntu file /etc/network/interfaces
+	echo grep DHCP $SYSTEMLOG and check for errors
 fi
 echo Checking if we can reach the gateway IP $GATEWAYIP ...
 if ! pingCheck $GATEWAYIP
 then
 	echo Cannot ping Gateway IP $GATEWAYIP
+	echo Possible cause is the interface IP is not on the correct subnet
+	echo $INTERFACE has address $INTERFACEIP and mask $SUBNETMASK
 else
-	echo We can
+	echo We can ping the gateway, so how far does traffic reach
+	if commandExists traceroute
+	then
+		$TRACEROUTE -g $GATEWAYIP $EXT_ADDRESS
+	else
+		echo Install traceroute to see how far packets are routed, use command
+		echo traceroute -g $GATEWAYIP $EXT_ADDRESS
+	fi
 fi
