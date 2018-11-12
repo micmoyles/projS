@@ -80,7 +80,6 @@ getDefaultConfigs () {
 	getDefaultLog
 	echo Gateway IP $GATEWAYIP
 	echo Interface $INTERFACE
-	echo Interface Subnet Mask is $SUBNETMASK
 	echo System log is $SYSTEMLOG
 	return 0
 }
@@ -106,16 +105,25 @@ getDefaultLog () {
 	done
 	return 1
 }
-#pingCheck $EXT_ADDRESS && onSuccess pingCheck || echo Ping to $EXT_ADDRESS  fail, proceeding with checks  
+if pingCheck $EXT_ADDRESS
+then 
+	pingCheck to external address $EXT_ADDRESS succeeded...exiting
+	return 0
+fi
+echo Ping to $EXT_ADDRESS  fail, proceeding with checks  
+
 getDefaultConfigs
-# is the interface up
+
+# is the interface up?
 echo Checking the interface $INTERFACE is up ... 
 if ! $IFCONFIG $INTERFACE &> $LOG 
 then
 	echo The default interface $INTERFACE is not up, this is a possible problem to investigate
+	return 1
 else
 	echo Default interface is up
 fi
+# Does the interface have an IP?
 echo 'Checking the interface has an IP ...'
 if getInterfaceIP $INTERFACE
 then
@@ -125,6 +133,7 @@ else
 	echo Check whether it should get one via DHCP or static
 	echo Ubuntu file /etc/network/interfaces
 	echo grep DHCP $SYSTEMLOG and check for errors
+	return 1
 fi
 echo Checking if we can reach the gateway IP $GATEWAYIP ...
 if ! pingCheck $GATEWAYIP
