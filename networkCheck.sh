@@ -18,6 +18,7 @@ ROUTE=$( which route )
 IFCONFIG=$( which ifconfig )
 ETHTOOL=$(which ethtool )
 DHCLIENT=$( which dhclient )
+IFUP=$( which ifup )
 LOG=$PWD/networkCheck.log
 desiredCommands='ifconfig netstat ping traceroute ip route' 
 for c in $desiredCommands
@@ -120,6 +121,7 @@ echo Checking the interface $INTERFACE is up ...
 if ! $IFCONFIG $INTERFACE &> $LOG 
 then
 	echo The default interface $INTERFACE is not up, this is a possible problem to investigate
+	commandExists ifup && echo Try $IFUP $INTERFACE and check $LOG for errors
 	exit 1
 else
 	echo Default interface is up
