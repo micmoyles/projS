@@ -17,6 +17,7 @@ TRACEROUTE=$( which traceroute )
 ROUTE=$( which route )
 IFCONFIG=$( which ifconfig )
 ETHTOOL=$(which ethtool )
+DHCLIENT=$( which dhclient )
 LOG=$PWD/networkCheck.log
 desiredCommands='ifconfig netstat ping traceroute ip route' 
 for c in $desiredCommands
@@ -130,22 +131,36 @@ then
 	echo Interface $INTERFACE has IP $INTERFACEIP
 else
 	echo Interface $INTERFACE has no IP
+	echo Some points to investigate
 	echo Check whether it should get one via DHCP or static
-	echo Ubuntu file /etc/network/interfaces
-	echo grep DHCP $SYSTEMLOG and check for errors
+	echo Does /etc/network/interfaces reference dhcp for $INTERFACE
+	echo If so, is the dhclient running?....
+	if commandExists dhclient
+	then
+		echo Try pgrep -f dhclient
+		echo if it is not running and it should be, try to start it...
+		echo $DHCLIENT -v $INTERFACE
+		echo grep DHCP $SYSTEMLOG and check for errors
+		echo check dhcp leases in /var/lib/dhcp/*leases
+	else
+		echo No dhclient found
+	fi
 	return 1
 fi
+
+# Assuming host configs are ok, now lets check we can reach the gateway
 echo Checking if we can reach the gateway IP $GATEWAYIP ...
 if ! pingCheck $GATEWAYIP
 then
 	echo Cannot ping Gateway IP $GATEWAYIP
 	echo Possible cause is the interface IP is not on the correct subnet
 	echo $INTERFACE has address $INTERFACEIP and mask $SUBNETMASK
+	return 1
 else
 	echo We can ping the gateway, so how far does traffic reach
 	if commandExists traceroute
 	then
-		$TRACEROUTE -g $GATEWAYIP $EXT_ADDRESS
+		$TRACEROUTE -g $GATEWAYIP $EXT_ADDRESS | tee -a $LOG
 	else
 		echo Install traceroute to see how far packets are routed, use command
 		echo traceroute -g $GATEWAYIP $EXT_ADDRESS
