@@ -9,13 +9,18 @@
 # *. Is the gateway IP pingable?
 # Example - host is 192.add.re.ss but gateway IP for defualt route is 172.add.re.ss then fail
 # 
-if -f networkCheckFunctions.sh
+if [ -f networkCheckFunctions.sh ]
 then
 	source networkCheckFunctions.sh
 else
 	echo Error - no networkCheckFunctions file found
 fi
-EXT_ADDRESS='8.8.8.8'
+if [ $# == 1 ]
+then 
+	EXT_ADDRESS=$1
+else
+	EXT_ADDRESS='8.8.8.8'
+fi
 NETSTAT=$( which netstat )
 PING=$( which ping )
 IP=$( which ip )
