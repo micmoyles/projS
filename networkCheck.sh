@@ -109,7 +109,7 @@ getDefaultLog () {
 }
 if pingCheck $EXT_ADDRESS
 then 
-	pingCheck to external address $EXT_ADDRESS succeeded...exiting
+	echo pingCheck to external address $EXT_ADDRESS succeeded...exiting
 	exit 0
 fi
 echo Ping to $EXT_ADDRESS  fail, proceeding with checks  
